@@ -1,1 +1,3 @@
-# Fraud Rule Engine Application Package
+"""
+Fraud Investigation System - Backend App Package
+"""

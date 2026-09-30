@@ -1,45 +1,251 @@
-from enum import Enum
-from typing import List, Optional
 from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from app.agent.schemas import (
+    EvidenceItem,
+    InvestigationRequest,
+    InvestigationResult
+)
+
+# ---------------------------------------------------------------------------
+# Evidence Request lifecycle schemas
+# ---------------------------------------------------------------------------
+
+class EvidenceRequestCreate(BaseModel):
+    """Payload for creating a new evidence request."""
+    transaction_id: Optional[str] = None
+    request_type: str = "customer_verification"
+    request_text: str = Field(..., min_length=5, description="The question / verification text sent to the customer.")
+    notes: Optional[str] = None
+    actor: Optional[str] = "ANALYST"
 
 
-class EvidenceSignificance(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    NEUTRAL = "NEUTRAL"
+class EvidenceRequestRespond(BaseModel):
+    """Payload for recording an actual customer / analyst response to a PENDING request."""
+    response: str = Field(..., min_length=1, description="The actual response text received from the customer or analyst.")
+    response_source: str = Field(default="CUSTOMER", description="Who provided the response: CUSTOMER, ANALYST, or SYSTEM.")
+    response_assumptions: Optional[str] = None
+    actor: Optional[str] = "ANALYST"
 
 
-class PolicyRule(str, Enum):
-    R1 = "R1"  # Low Risk Baseline
-    R2 = "R2"  # Pending Evidence
-    R3 = "R3"  # Dispute
-    R4 = "R4"  # Stolen Card
-    R5 = "R5"  # VPN Spoofing
-    R6 = "R6"  # Mismatch
-    R7 = "R7"  # Historical Fraud
-    R8 = "R8"  # Velocity Testing
-    R9 = "R9"  # Risk Signal Only
-    R10 = "R10"  # Pending Override
+class EvidenceRequestCancel(BaseModel):
+    """Payload for cancelling a PENDING evidence request."""
+    cancelled_reason: Optional[str] = None
+    actor: Optional[str] = "ANALYST"
 
 
-class KeyEvidenceItem(BaseModel):
-    evidence_id: str = Field(..., description="Unique evidence tracking ID (e.g., EV-1)")
-    finding: str = Field(..., description="Factual observation from graph traversal")
-    significance: EvidenceSignificance = Field(..., description="Risk significance level")
+class EvidenceRequestResponse(BaseModel):
+    """API response schema for a persisted evidence request."""
+    request_id: str
+    case_id: str
+    transaction_id: Optional[str] = None
+    request_type: str
+    request_text: str
+    status: str  # PENDING, RESPONDED, CANCELLED
+    response: Optional[str] = None
+    response_source: Optional[str] = None
+    response_assumptions: Optional[str] = None
+    responded_at: Optional[datetime] = None
+    cancelled_reason: Optional[str] = None
+    cancelled_at: Optional[datetime] = None
+    triggered_investigation_id: Optional[str] = None
+    actor: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
-class InvestigationRequest(BaseModel):
-    case_id: str = Field(..., description="Target ClosedCase vertex ID to investigate")
-    include_raw_graph: bool = Field(False, description="Whether to include raw graph topology in response metadata")
+class EvidenceRequestRespondResult(BaseModel):
+    """Extended response returned when a respond action also triggers a new investigation."""
+    evidence_request: EvidenceRequestResponse
+    new_investigation_id: Optional[str] = None
+    investigation_triggered: bool = False
+    investigation_error: Optional[str] = None
+
+class HealthCheck(BaseModel):
+    status: str = "ok"
+
+class CaseBase(BaseModel):
+    case_id: str
+    customer_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    trigger_type: Optional[str] = None
+    trigger_text: Optional[str] = None
+    status: str
+    verdict: Optional[str] = None
+    fraud_probability: Optional[float] = None
+    pattern: Optional[str] = None
+    exposure: Optional[float] = None
+
+class CaseCreate(CaseBase):
+    notes: Optional[str] = None
+
+class ManualCaseCreateRequest(BaseModel):
+    case_id: str = Field(..., min_length=1, description="Unique Case ID (required)")
+    customer_id: Optional[str] = Field(None, description="Customer ID (optional)")
+    transaction_id: str = Field(..., min_length=1, description="Transaction ID (required)")
+    amount: Optional[float] = Field(None, description="Transaction Amount (optional)")
+    trigger_type: str = Field(..., min_length=1, description="Trigger Type: customer_report, fraud_signal, analyst_review")
+    trigger_text: str = Field(..., min_length=1, description="Customer report / analyst notes (required)")
+
+class CaseResponse(CaseBase):
+    created_at: datetime
+    updated_at: datetime
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class InvestigationHistoryItem(BaseModel):
+    investigation_id: str
+    case_id: str
+    customer_id: Optional[str] = None
+    case_status: Optional[str] = None
+    status: Optional[str] = None
+    verdict: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    reasoning_summary: Optional[str] = None
+    stop_reason: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class InvestigationHistoryResponse(BaseModel):
+    case_id: str
+    investigations: List[InvestigationHistoryItem]
+
+class AuditEventItem(BaseModel):
+    id: int
+    case_id: str
+    investigation_id: Optional[str] = None
+    event_type: str
+    description: Optional[str] = None
+    actor: str = "AGENT"
+    metadata_json: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class InvestigationDetailResponse(BaseModel):
+    investigation_id: str
+    case_id: str
+    customer_id: Optional[str] = None
+    case_status: Optional[str] = None
+    status: Optional[str] = None
+    verdict: Optional[str] = None
+    fraud_probability: Optional[float] = None
+    pattern: Optional[str] = None
+    reasoning_summary: Optional[str] = None
+    stop_reason: Optional[str] = None
+    exposure: Optional[float] = None
+    sar_status: Optional[str] = None
+    sar_reason: Optional[str] = None
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_latency: Optional[float] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    evidence: List[Dict[str, Any]] = []
+    actions_initial: List[str] = []
+    actions_final: List[str] = []
+    rules: List[Dict[str, Any]] = []
+    audit_events: List[AuditEventItem] = []
+
+    class Config:
+        from_attributes = True
 
 
-class InvestigationResponse(BaseModel):
-    summary: str = Field(..., description="Concise summary of the case and graph topology findings")
-    key_evidence: List[KeyEvidenceItem] = Field(..., description="Mapped graph findings with significance levels")
-    observed_patterns: List[str] = Field(default_factory=list, description="List of observed fraud velocity/device/location patterns")
-    conflicting_evidence: List[str] = Field(default_factory=list, description="List of contradictory graph observations")
-    missing_evidence: List[str] = Field(default_factory=list, description="List of unlinked vertices or missing data gaps")
-    uncertainties: List[str] = Field(default_factory=list, description="Open questions or unverified graph facts")
-    relevant_rules: List[PolicyRule] = Field(default_factory=list, description="Triggered policy rules from R1-R10")
-    reasoning: str = Field(..., description="Detailed graph-driven analytical reasoning")
+# ---------------------------------------------------------------------------
+# Graph Visualization Schemas
+# ---------------------------------------------------------------------------
+
+class GraphNode(BaseModel):
+    id: str
+    type: str  # Customer, Card, Transaction, DeviceProfile, EmailDomain, BillingRegion, ClosedCase, EvidenceRequest
+    label: str
+    properties: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    type: str  # OWNS, MADE, FROM_DEVICE, PURCHASER_EMAIL, BILLED_IN, INVOLVES, CONNECTED_TO, FOR_CASE, FOR_TRANSACTION
+    label: str
+
+
+class CaseGraphResponse(BaseModel):
+    case_id: str
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]
+
+
+# ---------------------------------------------------------------------------
+# SAR Workflow Schemas
+# ---------------------------------------------------------------------------
+
+class SarReviewRequest(BaseModel):
+    """Payload for analyst review of a SAR candidate."""
+    decision: str = Field(..., description="Decision: 'approve' or 'do_not_file'")
+    analyst_notes: Optional[str] = Field(default=None, description="Analyst notes explaining approval or decision not to file.")
+    reviewer_id: Optional[str] = Field(default="ANALYST", description="ID of the reviewing analyst.")
+
+
+class SarPrepareRequest(BaseModel):
+    """Payload for internal SAR report preparation."""
+    notes: Optional[str] = None
+    actor: Optional[str] = "ANALYST"
+
+
+class SarSubmissionStatusRequest(BaseModel):
+    """Payload for updating internal SAR submission status."""
+    status: str = Field(default="SUBMISSION_PENDING", description="Internal tracking status (e.g. SUBMISSION_PENDING).")
+    notes: Optional[str] = None
+    actor: Optional[str] = "ANALYST"
+
+
+class SarRecordResponse(BaseModel):
+    """API response schema for a persisted SAR record."""
+    sar_id: str
+    case_id: str
+    investigation_id: str
+    status: str  # NOT_RECOMMENDED, CANDIDATE, UNDER_REVIEW, APPROVED, NOT_FILED, PREPARED, SUBMISSION_PENDING, FILED
+    eligibility: str  # ELIGIBLE, NOT_ELIGIBLE, INCONCLUSIVE
+    eligibility_reason: Optional[str] = None
+    exposure_usd: Optional[float] = None
+
+    related_transaction_ids: List[str] = []
+    related_card_ids: List[str] = []
+    related_customer_ids: List[str] = []
+    related_device_ids: List[str] = []
+    related_regions: List[str] = []
+    related_closed_case_ids: List[str] = []
+    supporting_evidence: List[Dict[str, Any]] = []
+    policy_rules: List[Dict[str, Any]] = []
+
+    analyst_decision: Optional[str] = None
+    analyst_notes: Optional[str] = None
+    reviewer_id: Optional[str] = None
+
+    report_reference: Optional[str] = None
+    report_draft_json: Optional[Dict[str, Any]] = None
+
+    created_at: datetime
+    updated_at: datetime
+    reviewed_at: Optional[datetime] = None
+    prepared_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+
