@@ -145,6 +145,34 @@ class TigerGraphClient:
 
         return []
 
+    async def write_case_verdict(self, case_id: str, decision_state: str, verdict: str) -> bool:
+        """
+        Write Investigation Verdict Back to Graph via RESTPP POST /restpp/graph/{graph_name}.
+        """
+        headers = await self._get_auth_headers()
+        url = f"{self.host}/restpp/graph/{self.graph_name}"
+        payload = {
+            "vertices": {
+                "ClosedCase": {
+                    case_id: {
+                        "status": {"value": decision_state},
+                        "verdict": {"value": verdict},
+                    }
+                }
+            }
+        }
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                res = await client.post(url, headers=headers, json=payload)
+                if res.status_code in (200, 201):
+                    logger.info(f"Successfully wrote verdict back to ClosedCase '{case_id}' in TigerGraph.")
+                    return True
+                logger.error(f"Failed to write verdict back to TigerGraph for '{case_id}': status {res.status_code}")
+                return False
+            except Exception as e:
+                logger.error(f"Error writing verdict back to TigerGraph for case '{case_id}': {e}")
+                return False
+
     def check_health(self) -> bool:
         """
         Lightweight connectivity health check.
