@@ -3,6 +3,7 @@ Graph Query Abstraction Layer for TigerGraph GSQL queries.
 Contains named query definitions and execution helpers for fraud graph pattern detection.
 """
 
+import asyncio
 from typing import Dict, Any, List, Optional
 from app.integrations.tigergraph.client import TigerGraphClient, tigergraph_client
 from app.integrations.tigergraph.exceptions import TigerGraphQueryError
@@ -87,8 +88,22 @@ class TigerGraphQueryRegistry:
         return self.run_query(self.QUERY_GET_HISTORICAL_LINKED_CASES, {"card_ids": card_ids})
 
     def get_case_evidence_requests(self, case_id: str) -> List[Dict[str, Any]]:
-        """Step 7: Traversal EvidenceRequest -[FOR_CASE]-> ClosedCase (strict case boundary)."""
-        return self.run_query(self.QUERY_GET_CASE_EVIDENCE_REQUESTS, {"case_id": case_id})
+        """Step 7: Fetch evidence requests via RESTPP edge traversal / vertex filter fallback."""
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+                # Run in executor if loop is running
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    return loop.run_in_executor(pool, lambda: asyncio.run(self.client.get_case_evidence_requests(case_id)))
+            except RuntimeError:
+                return asyncio.run(self.client.get_case_evidence_requests(case_id))
+        except Exception as e:
+            logger.warning(f"Error fetching evidence requests via RESTPP for case '{case_id}': {e}")
+            try:
+                return self.run_query(self.QUERY_GET_CASE_EVIDENCE_REQUESTS, {"case_id": case_id})
+            except Exception:
+                return []
 
 
 query_registry = TigerGraphQueryRegistry()

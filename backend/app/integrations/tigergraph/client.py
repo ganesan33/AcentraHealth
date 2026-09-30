@@ -1,4 +1,5 @@
-from typing import Optional, Any, Dict
+import httpx
+from typing import Optional, Any, Dict, List
 from app.core.config import settings
 from app.core.logging import logger
 from app.integrations.tigergraph.exceptions import (
@@ -98,6 +99,51 @@ class TigerGraphClient:
         except Exception as e:
             logger.error(f"Failed to connect to TigerGraph server at {self.host}: {e}")
             raise TigerGraphConnectionError(f"Connection attempt failed: {str(e)}")
+
+    async def _get_auth_headers(self) -> Dict[str, str]:
+        """Generate Authorization headers for RESTPP HTTP requests."""
+        headers = {"Accept": "application/json"}
+        token = self.token
+        if not token and self._conn:
+            token = getattr(self._conn, "apiToken", None)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
+
+    async def get_case_evidence_requests(self, case_id: str) -> list:
+        """
+        Fetch evidence requests for a given case ID using TigerGraph RESTPP API.
+        Tries edge traversal first, then vertex filtering fallback.
+        """
+        headers = await self._get_auth_headers()
+        
+        # Endpoint 1: Direct RESTPP Edge Traversal (ClosedCase -> EvidenceRequest)
+        edge_url = f"{self.host}/restpp/graph/{self.graph_name}/edges/ClosedCase/{case_id}/reverse_FOR_CASE"
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                res = await client.get(edge_url, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    results = data.get("results", [])
+                    if results:
+                        return results
+            except Exception as e:
+                logger.warning(f"Edge traversal error for case '{case_id}': {e}")
+
+            # Endpoint 2: Direct Vertex Filter Fallback (EvidenceRequest where case_id = case_id)
+            vertex_url = f"{self.host}/restpp/graph/{self.graph_name}/vertices/EvidenceRequest"
+            params = {"filter": f'case_id="{case_id}"'}
+            
+            try:
+                res = await client.get(vertex_url, headers=headers, params=params)
+                if res.status_code == 200:
+                    data = res.json()
+                    return data.get("results", [])
+            except Exception as e:
+                logger.error(f"Vertex filter query error for case '{case_id}': {e}")
+
+        return []
 
     def check_health(self) -> bool:
         """
