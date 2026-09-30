@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, Any
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.core.redis import init_redis, close_redis
+from app.integrations.tigergraph.client import tigergraph_client
 from app.api import api_router
 
 
@@ -60,6 +61,25 @@ async def health_check() -> Dict[str, Any]:
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
+    }
+
+# Dedicated TigerGraph health check endpoint
+@app.get("/health/tigergraph", status_code=status.HTTP_200_OK, tags=["Health"])
+async def tigergraph_health_check() -> Dict[str, Any]:
+    """Lightweight connectivity health check for TigerGraph service."""
+    is_healthy = tigergraph_client.check_health()
+    if not is_healthy:
+        return {
+            "status": "unhealthy",
+            "service": "TigerGraph",
+            "graph": settings.TIGERGRAPH_GRAPH,
+            "host": settings.TIGERGRAPH_HOST,
+        }
+    return {
+        "status": "healthy",
+        "service": "TigerGraph",
+        "graph": settings.TIGERGRAPH_GRAPH,
+        "host": settings.TIGERGRAPH_HOST,
     }
 
 # Include API v1 router

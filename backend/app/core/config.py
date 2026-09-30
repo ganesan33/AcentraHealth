@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     AWS_SNS_TOPIC_ARN: Optional[str] = None
     AWS_SES_SENDER_EMAIL: Optional[str] = None
 
+    # TigerGraph Settings
+    TIGERGRAPH_HOST: str = "http://localhost"
+    TIGERGRAPH_GRAPH: str = "FraudGraph"
+    TIGERGRAPH_SECRET: Optional[str] = None
+    TIGERGRAPH_TOKEN: Optional[str] = None
+    TIGERGRAPH_USERNAME: Optional[str] = "tigergraph"
+    TIGERGRAPH_PASSWORD: Optional[str] = "tigergraph"
+    TIGERGRAPH_RESTPP_PORT: int = 9000
+    TIGERGRAPH_GS_PORT: int = 14240
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
