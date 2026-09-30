@@ -6,9 +6,11 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
+from app.core.database import engine, Base
 from app.core.redis import init_redis, close_redis
 from app.integrations.tigergraph.client import tigergraph_client
 from app.api import api_router
+import app.models  # Ensure all ORM models are registered in metadata
 
 
 @asynccontextmanager
@@ -17,6 +19,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}")
     
+    # Auto-create database tables if they do not exist
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized successfully.")
+    except Exception as db_err:
+        logger.warning(f"Could not auto-create database tables: {db_err}")
+
     # Initialize Redis connection
     await init_redis()
     
