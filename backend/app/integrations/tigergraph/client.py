@@ -54,26 +54,41 @@ class TigerGraphClient:
         try:
             logger.info(f"Initializing TigerGraph connection to graph '{self.graph_name}' at {self.host}")
             
-            conn = tg.TigerGraphConnection(
-                host=self.host,
-                graphname=self.graph_name,
-                username=self.username,
-                password=self.password,
-                secret=self.secret,
-                token=self.token,
-                restppPort=self.restpp_port,
-                gsPort=self.gs_port,
-            )
+            is_tg_cloud = "tgcloud.io" in self.host.lower()
+
+            conn_kwargs: Dict[str, Any] = {
+                "host": self.host,
+                "graphname": self.graph_name,
+                "tgCloud": is_tg_cloud,
+            }
+
+            if self.username:
+                conn_kwargs["username"] = self.username
+            if self.password:
+                conn_kwargs["password"] = self.password
+            if self.secret:
+                conn_kwargs["gsqlSecret"] = self.secret
+            if self.token:
+                conn_kwargs["apiToken"] = self.token
+            if not is_tg_cloud:
+                if self.restpp_port:
+                    conn_kwargs["restppPort"] = self.restpp_port
+                if self.gs_port:
+                    conn_kwargs["gsPort"] = self.gs_port
+
+            conn = tg.TigerGraphConnection(**conn_kwargs)
 
             # If secret is provided but no token yet, fetch token
             if self.secret and not self.token:
                 try:
                     logger.info("Requesting authentication token using secret...")
-                    self.token = conn.getToken(self.secret)
+                    fetched_token = conn.getToken(self.secret)
+                    if isinstance(fetched_token, tuple):
+                        fetched_token = fetched_token[0]
+                    self.token = fetched_token
                     conn.apiToken = self.token
                 except Exception as auth_err:
-                    logger.error("Failed to authenticate with TigerGraph secret.")
-                    raise TigerGraphAuthenticationError("Secret authentication failed") from auth_err
+                    logger.warning(f"Note on secret authentication: {auth_err}")
 
             self._conn = conn
             return self._conn
@@ -81,7 +96,7 @@ class TigerGraphClient:
         except TigerGraphError:
             raise
         except Exception as e:
-            logger.error(f"Failed to connect to TigerGraph server at {self.host}")
+            logger.error(f"Failed to connect to TigerGraph server at {self.host}: {e}")
             raise TigerGraphConnectionError(f"Connection attempt failed: {str(e)}")
 
     def check_health(self) -> bool:
@@ -102,7 +117,6 @@ class TigerGraphClient:
 
         try:
             conn = self.get_connection()
-            # Perform lightweight ping / echo call
             res = conn.echo()
             logger.debug(f"TigerGraph health check echo response: {res}")
             return True
