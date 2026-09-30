@@ -1,5 +1,10 @@
+"""
+Fraud Detection Rules Package.
+Implements policy rules R1 through R10 for transaction risk evaluation.
+"""
+
 from app.rules.base import BaseFraudRule, RuleResult
-from app.rules.registry import rule_registry, RuleRegistry
+from app.rules.registry import RuleRegistry, rule_registry
 from app.rules.r1_velocity_spike import HighVelocitySpikeRule
 from app.rules.r2_device_anomaly import DeviceFingerprintAnomalyRule
 from app.rules.r3_billing_region import BillingRegionMismatchRule
@@ -11,14 +16,14 @@ from app.rules.r8_customer_legitimacy import CustomerConfirmedLegitimacyRule
 from app.rules.r9_high_exposure import HighTransactionExposureRule
 from app.rules.r10_cumulative_threshold import CumulativeFraudScoreThresholdRule
 
-# Legacy / additional rules
-from app.rules.velocity import HighFrequencyTransactionRule
-from app.rules.unusual_amount import UnusualAmountRule
-from app.rules.impossible_location import ImpossibleLocationRule
+# Backward-compatibility aliases
+HighFrequencyTransactionRule = HighVelocitySpikeRule
+UnusualAmountRule = HighTransactionExposureRule
 
-# Auto-register R1 through R10 in the default registry
+
 def register_default_rules() -> None:
-    rules_to_register = [
+    """Register the canonical R1-R10 rules into the global rule registry."""
+    canonical_rules = [
         HighVelocitySpikeRule(),
         DeviceFingerprintAnomalyRule(),
         BillingRegionMismatchRule(),
@@ -29,19 +34,23 @@ def register_default_rules() -> None:
         CustomerConfirmedLegitimacyRule(),
         HighTransactionExposureRule(),
         CumulativeFraudScoreThresholdRule(),
-        ImpossibleLocationRule(),
     ]
-    for r in rules_to_register:
+    for r in canonical_rules:
         if not rule_registry.get_rule(r.rule_id):
             rule_registry.register(r)
 
+
+# Initialize default rules
 register_default_rules()
 
 __all__ = [
+    # Core interfaces
     "BaseFraudRule",
     "RuleResult",
-    "rule_registry",
     "RuleRegistry",
+    "rule_registry",
+    "register_default_rules",
+    # Canonical R1 - R10 rules
     "HighVelocitySpikeRule",
     "DeviceFingerprintAnomalyRule",
     "BillingRegionMismatchRule",
@@ -52,7 +61,7 @@ __all__ = [
     "CustomerConfirmedLegitimacyRule",
     "HighTransactionExposureRule",
     "CumulativeFraudScoreThresholdRule",
+    # Compatibility aliases
     "HighFrequencyTransactionRule",
     "UnusualAmountRule",
-    "ImpossibleLocationRule",
 ]

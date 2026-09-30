@@ -72,3 +72,6 @@ class DisposableEmailDomainRule(BaseFraudRule):
             reason=reason,
             metadata={"email": email, "domain": domain, "disposable": triggered},
         )
+
+
+__all__ = ["DisposableEmailDomainRule", "DEFAULT_DISPOSABLE_DOMAINS"]

@@ -55,3 +55,6 @@ class PriorChargebackLinkRule(BaseFraudRule):
                 "closed_case_link": closed_case_link,
             },
         )
+
+
+__all__ = ["PriorChargebackLinkRule"]

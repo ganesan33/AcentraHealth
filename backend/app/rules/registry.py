@@ -1,4 +1,4 @@
-from typing import Dict, Type, List
+from typing import Dict, List, Optional
 from app.rules.base import BaseFraudRule
 from app.core.logging import logger
 
@@ -21,7 +21,7 @@ class RuleRegistry:
         if rule_id in self._rules:
             del self._rules[rule_id]
 
-    def get_rule(self, rule_id: str) -> BaseFraudRule:
+    def get_rule(self, rule_id: str) -> Optional[BaseFraudRule]:
         """Fetch a registered rule by ID."""
         return self._rules.get(rule_id)
 
@@ -33,6 +33,12 @@ class RuleRegistry:
         """Return all currently enabled rules."""
         return [rule for rule in self._rules.values() if rule.enabled]
 
+    def clear(self) -> None:
+        """Clear all registered rules."""
+        self._rules.clear()
+
 
 # Global rule registry singleton instance
 rule_registry = RuleRegistry()
+
+__all__ = ["RuleRegistry", "rule_registry"]

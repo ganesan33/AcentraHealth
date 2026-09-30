@@ -75,3 +75,6 @@ class DeviceFingerprintAnomalyRule(BaseFraudRule):
                 "ip_address": transaction_data.get("ip_address"),
             },
         )
+
+
+__all__ = ["DeviceFingerprintAnomalyRule"]

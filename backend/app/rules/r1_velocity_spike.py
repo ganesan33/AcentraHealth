@@ -114,3 +114,6 @@ class HighVelocitySpikeRule(BaseFraudRule):
             dq.popleft()
         dq.append(now)
         return len(dq)
+
+
+__all__ = ["HighVelocitySpikeRule"]

@@ -63,3 +63,6 @@ class CumulativeFraudScoreThresholdRule(BaseFraudRule):
                 "policy_state": state,
             },
         )
+
+
+__all__ = ["CumulativeFraudScoreThresholdRule"]

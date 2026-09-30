@@ -60,10 +60,7 @@ fraud-rule-engine/
 │   │   │   ├── r7_pending_evidence.py       # R7: Pending Evidence Verification Guard
 │   │   │   ├── r8_customer_legitimacy.py     # R8: Customer Confirmed Legitimacy
 │   │   │   ├── r9_high_exposure.py          # R9: High Transaction Exposure (> $2,500)
-│   │   │   ├── r10_cumulative_threshold.py  # R10: Cumulative Fraud Score Threshold
-│   │   │   ├── velocity.py                  # HighFrequencyTransactionRule
-│   │   │   ├── unusual_amount.py            # UnusualAmountRule
-│   │   │   └── impossible_location.py       # ImpossibleLocationRule
+│   │   │   └── r10_cumulative_threshold.py  # R10: Cumulative Fraud Score Threshold
 │   │
 │   │   ├── engine/
 │   │   │   ├── __init__.py
@@ -101,8 +98,7 @@ fraud-rule-engine/
 │   ├── tests/
 │   │   ├── unit/
 │   │   │   ├── rules/
-│   │   │   │   ├── test_rules.py
-│   │   │   │   └── test_policy_rules.py     # Comprehensive R1-R10 test suite
+│   │   │   │   └── test_rules.py            # Comprehensive R1-R10 test suite
 │   │   │   ├── engine/
 │   │   │   │   └── test_engine.py
 │   │   │   ├── test_health.py
@@ -151,7 +147,7 @@ fraud-rule-engine/
 - **`backend/app/core/`**: Infrastructure configuration, SQLAlchemy 2.0 async engine, Redis connection lifecycle, logging, and `security.py` (PBKDF2 password hashing, JWT creation/verification, role enforcement).
 - **`backend/app/models/`**: SQLAlchemy 2.0 ORM models (`Transaction`, `FraudRule`, `FraudEvaluation`, `RuleResultModel`, `Review`, `AuditLog`).
 - **`backend/app/schemas/`**: Pydantic v2 validation models and DTOs.
-- **`backend/app/rules/`**: Declarative base rule interface, dynamic `RuleRegistry`, and concrete fraud detection algorithms:
+- **`backend/app/rules/`**: Declarative base rule interface, dynamic `RuleRegistry`, and canonical fraud detection algorithms:
   - `r1_velocity_spike.py` (**R1**): Detects rapid consecutive transactions or bursts (>= 5 in 10m).
   - `r2_device_anomaly.py` (**R2**): Flags anonymized VPN, proxy, TOR, or device fingerprint tampering.
   - `r3_billing_region.py` (**R3**): Flags billing country vs origin/IP geographical discrepancies.
@@ -162,7 +158,6 @@ fraud-rule-engine/
   - `r8_customer_legitimacy.py` (**R8**): Cardholder confirmation clearing guard (forces `CLEARED` / `APPROVED` with risk credit).
   - `r9_high_exposure.py` (**R9**): Flags high transaction or cumulative exposure exceeding $2,500 USD ceiling.
   - `r10_cumulative_threshold.py` (**R10**): Cumulative fraud score threshold evaluation and policy binding.
-  - `impossible_location.py`: Haversine geo-velocity and impossible travel speed detection (> 850 km/h).
 - **`backend/app/engine/`**: Core evaluation orchestrator (`FraudEngine`), weighted decision boundaries (`RiskScorer`), and result types (`FraudDecision`).
 - **`backend/app/repositories/`**: Decoupled database data access layer for all domain entities.
 - **`backend/app/services/`**: Business logic orchestration connecting database repositories, rules engine, reviewer workflows, and external notifications.

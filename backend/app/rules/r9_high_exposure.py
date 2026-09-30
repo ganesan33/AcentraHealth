@@ -56,3 +56,6 @@ class HighTransactionExposureRule(BaseFraudRule):
                 "currency": currency,
             },
         )
+
+
+__all__ = ["HighTransactionExposureRule"]

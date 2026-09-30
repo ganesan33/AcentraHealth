@@ -59,3 +59,6 @@ class CustomerConfirmedLegitimacyRule(BaseFraudRule):
                 "stolen_card_override": stolen_card,
             },
         )
+
+
+__all__ = ["CustomerConfirmedLegitimacyRule"]

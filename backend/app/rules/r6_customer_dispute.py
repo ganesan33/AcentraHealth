@@ -52,3 +52,6 @@ class CustomerDisputeClaimRule(BaseFraudRule):
                 "customer_dispute": customer_dispute,
             },
         )
+
+
+__all__ = ["CustomerDisputeClaimRule"]
