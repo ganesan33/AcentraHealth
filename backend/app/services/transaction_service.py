@@ -53,6 +53,8 @@ class TransactionService:
                 evaluation_id=str(uuid.uuid4()),
                 transaction_id=tx_id,
                 decision=FraudDecisionEnum(raw_eval.decision.value),
+                decision_state=raw_eval.decision_state,
+                verdict=raw_eval.verdict,
                 risk_score=raw_eval.risk_score,
                 triggered_rule_count=len(raw_eval.triggered_rules),
                 evaluation_time_ms=raw_eval.evaluation_time_ms,
@@ -63,6 +65,8 @@ class TransactionService:
                         triggered=r.triggered,
                         score_impact=r.score_impact,
                         reason=r.reason,
+                        severity=r.severity,
+                        status=r.status,
                         metadata=r.metadata,
                     )
                     for r in raw_eval.triggered_rules
@@ -74,6 +78,8 @@ class TransactionService:
                         triggered=r.triggered,
                         score_impact=r.score_impact,
                         reason=r.reason,
+                        severity=r.severity,
+                        status=r.status,
                         metadata=r.metadata,
                     )
                     for r in raw_eval.all_rule_results

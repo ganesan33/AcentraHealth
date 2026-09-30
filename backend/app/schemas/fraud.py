@@ -18,6 +18,8 @@ class RuleResultItem(BaseModel):
     triggered: bool
     score_impact: float = 0.0
     reason: Optional[str] = None
+    severity: str = "MEDIUM"
+    status: str = "NOT_TRIGGERED"
     metadata: Dict[str, Any] = {}
 
     model_config = ConfigDict(from_attributes=True)
@@ -37,6 +39,8 @@ class FraudEvaluationResponse(BaseModel):
     evaluation_id: str
     transaction_id: str
     decision: FraudDecisionEnum
+    decision_state: str = "CLEARED"  # CONFIRMED_FRAUD, VERIFICATION_PENDING, UNDER_INVESTIGATION, CLEARED
+    verdict: str = "APPROVED"        # APPROVED, NEEDS_REVIEW, DECLINED
     risk_score: float = Field(ge=0.0, le=100.0)
     triggered_rule_count: int
     evaluation_time_ms: float

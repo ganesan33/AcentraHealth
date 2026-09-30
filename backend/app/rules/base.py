@@ -10,6 +10,8 @@ class RuleResult(BaseModel):
     triggered: bool
     score_impact: float = 0.0
     reason: Optional[str] = None
+    severity: str = "MEDIUM"  # CRITICAL, HIGH, MEDIUM, LOW, INFO
+    status: str = "NOT_TRIGGERED"  # TRIGGERED, NOT_TRIGGERED, SIGNAL_ONLY
     metadata: Dict[str, Any] = {}
 
 

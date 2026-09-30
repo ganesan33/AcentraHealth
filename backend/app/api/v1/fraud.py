@@ -32,6 +32,8 @@ async def evaluate_fraud(
         evaluation_id=str(uuid.uuid4()),
         transaction_id=eval_result.transaction_id,
         decision=FraudDecisionEnum(eval_result.decision.value),
+        decision_state=eval_result.decision_state,
+        verdict=eval_result.verdict,
         risk_score=eval_result.risk_score,
         triggered_rule_count=len(eval_result.triggered_rules),
         evaluation_time_ms=eval_result.evaluation_time_ms,
@@ -42,6 +44,8 @@ async def evaluate_fraud(
                 triggered=r.triggered,
                 score_impact=r.score_impact,
                 reason=r.reason,
+                severity=r.severity,
+                status=r.status,
                 metadata=r.metadata,
             )
             for r in eval_result.triggered_rules
@@ -53,6 +57,8 @@ async def evaluate_fraud(
                 triggered=r.triggered,
                 score_impact=r.score_impact,
                 reason=r.reason,
+                severity=r.severity,
+                status=r.status,
                 metadata=r.metadata,
             )
             for r in eval_result.all_rule_results

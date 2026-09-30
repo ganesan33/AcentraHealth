@@ -14,6 +14,8 @@ class FraudEvaluationResult(BaseModel):
     """Overall evaluation output produced by the Fraud Engine."""
     transaction_id: str
     decision: FraudDecision
+    decision_state: str = "CLEARED"  # CONFIRMED_FRAUD, VERIFICATION_PENDING, UNDER_INVESTIGATION, CLEARED
+    verdict: str = "APPROVED"        # APPROVED, NEEDS_REVIEW, DECLINED
     risk_score: float = Field(ge=0.0, le=100.0, description="Risk score between 0 and 100")
     triggered_rules: List[RuleResult] = []
     all_rule_results: List[RuleResult] = []

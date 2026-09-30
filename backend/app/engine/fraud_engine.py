@@ -9,8 +9,7 @@ from app.core.logging import logger
 
 class FraudEngine:
     """
-    Main Fraud Engine orchestrating rule retrieval, execution, and risk scoring.
-    Skeleton implementation for project structure.
+    Main Fraud Engine orchestrating rule retrieval, execution, policy evaluation, and risk scoring.
     """
 
     def __init__(
@@ -23,7 +22,7 @@ class FraudEngine:
 
     async def evaluate_transaction(self, transaction: Dict[str, Any]) -> FraudEvaluationResult:
         """
-        Evaluate a transaction against all enabled rules and compute decision.
+        Evaluate a transaction against all enabled rules and compute decision, decision_state, and verdict.
         """
         start_time = time.time()
         transaction_id = str(transaction.get("id", transaction.get("transaction_id", "unknown")))
@@ -35,6 +34,9 @@ class FraudEngine:
         triggered_rules: List[RuleResult] = []
 
         for rule in enabled_rules:
+            # Skip R10 in first pass so it can evaluate the cumulative score of all rules
+            if rule.rule_id == "R10":
+                continue
             try:
                 res = await rule.evaluate(transaction)
                 rule_results.append(res)
@@ -43,15 +45,38 @@ class FraudEngine:
             except Exception as e:
                 logger.error(f"Error evaluating rule {rule.rule_id}: {e}")
 
+        # Compute preliminary cumulative score
         risk_score = self.scorer.calculate_score(rule_results)
-        decision = self.scorer.determine_decision(risk_score)
+
+        # Evaluate R10 (Cumulative Fraud Score Threshold) with the computed score
+        r10_rule = self.registry.get_rule("R10")
+        if r10_rule and r10_rule.enabled:
+            tx_with_score = dict(transaction)
+            tx_with_score["risk_score"] = risk_score
+            try:
+                r10_res = await r10_rule.evaluate(tx_with_score)
+                rule_results.append(r10_res)
+                if r10_res.triggered:
+                    triggered_rules.append(r10_res)
+            except Exception as e:
+                logger.error(f"Error evaluating R10: {e}")
+
+        # Determine final decision, decision_state, and verdict
+        decision, decision_state, verdict = self.scorer.determine_decision_and_state(risk_score, rule_results)
         eval_time_ms = (time.time() - start_time) * 1000
 
         return FraudEvaluationResult(
             transaction_id=transaction_id,
             decision=decision,
+            decision_state=decision_state,
+            verdict=verdict,
             risk_score=risk_score,
             triggered_rules=triggered_rules,
             all_rule_results=rule_results,
+            metadata={
+                "decision_state": decision_state,
+                "verdict": verdict,
+                "evaluated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            },
             evaluation_time_ms=eval_time_ms,
         )
