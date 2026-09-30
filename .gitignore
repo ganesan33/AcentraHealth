@@ -7,6 +7,8 @@ env/
 venv/
 ENV/
 
+
+/Fraud-Investigation-System-main
 # Node / Frontend
 node_modules/
 dist/

@@ -89,11 +89,13 @@ def test_tigergraph_upsert_error_handling() -> None:
 @pytest.mark.asyncio
 async def test_test_transaction_endpoint(async_client) -> None:
     """Test the dev endpoint /api/v1/graph/test-transaction with mocked service."""
-    with patch("app.api.graph.get_tigergraph_service") as mock_get_svc:
-        mock_svc = MagicMock()
-        mock_svc.ingest_full_transaction.return_value = True
-        mock_get_svc.return_value = mock_svc
+    from app.main import app
+    from app.integrations.tigergraph.service import get_tigergraph_service
 
+    mock_svc = MagicMock()
+    mock_svc.ingest_full_transaction.return_value = True
+    app.dependency_overrides[get_tigergraph_service] = lambda: mock_svc
+    try:
         response = await async_client.post(
             "/api/v1/graph/test-transaction",
             json={"transaction_id": "tx_mock_1", "amount": 100.0},
@@ -101,3 +103,5 @@ async def test_test_transaction_endpoint(async_client) -> None:
         assert response.status_code == 201
         data = response.json()
         assert data["status"] == "success"
+    finally:
+        app.dependency_overrides.pop(get_tigergraph_service, None)

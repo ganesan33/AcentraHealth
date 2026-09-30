@@ -43,13 +43,13 @@ class TigerGraphClient:
 
     def get_connection(self) -> Any:
         """Retrieve active pyTigerGraph connection, creating or authenticating if necessary."""
+        if self._conn is not None:
+            return self._conn
+
         if tg is None:
             raise TigerGraphConnectionError(
                 "pyTigerGraph library is not installed in the environment."
             )
-
-        if self._conn is not None:
-            return self._conn
 
         try:
             logger.info(f"Initializing TigerGraph connection to graph '{self.graph_name}' at {self.host}")
@@ -89,6 +89,13 @@ class TigerGraphClient:
         Lightweight connectivity health check.
         Returns True if TigerGraph responds to echo/ping, False otherwise.
         """
+        if self._conn is not None:
+            try:
+                self._conn.echo()
+                return True
+            except Exception:
+                return False
+
         if tg is None:
             logger.warning("pyTigerGraph not installed. Health check failed.")
             return False
